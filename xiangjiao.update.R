@@ -1,0 +1,6 @@
+RU.1D<-shujuzhunbei.shangpin1()
+RU.1D.HUICE.1<-moshi1.shangpin.huice(id=RU.1D,DATABegt="1997-01-01",CSBegt="2013-12-23",CSEndt="2014-02-20")
+write.csv(RU.1D.HUICE.1,"RU.1D.HUICE.1.csv")
+RU.1D<-shujuzhunbei.shangpin3()
+RU.1D.HUICE.3<-moshi3.shangpin.huice(id=RU.1D,DATABegt="1997-01-01",CSBegt="2013-12-23",CSEndt="2014-02-20")
+write.csv(RU.1D.HUICE.3,"RU.1D.HUICE.3.csv")

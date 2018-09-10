@@ -1,0 +1,11 @@
+*.pyc
+.idea
+*.log
+*.db
+*.xlsx
+*.txt
+*.xls
+*.csv
+*.RData
+*.pdf
+*.rar

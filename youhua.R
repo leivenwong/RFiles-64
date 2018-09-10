@@ -1,0 +1,146 @@
+youhua<-function(HUICE.id="SH000001",NEXT.id="HS300",cy="60M",MS1="3",MS2="1",QIBUZICHAN=300000,
+                 MS1FZ=67,MS2FZ=59,DUOZHISUN=-0.3,KONGZHISUN=0.05,GAOKAIFZ=1,DIKAIFZ=-1,CHONGJICHENGBEN=0.2,YIDIANJINE=300)
+{
+  library("RODBC")
+  library("xts")
+  channel<-odbcConnectExcel(paste(NEXT.id,cy,"NEXT","xls",sep="."))
+  PINZHONG<-sqlFetch(channel,"Sheet2")
+  odbcClose(channel)
+  
+  MS1.HUICE<-read.csv(paste(HUICE.id,cy,"HUICE",MS1,"csv",sep="."))
+  MS2.HUICE<-read.csv(paste(HUICE.id,cy,"HUICE",MS2,"csv",sep="."))
+  
+  DATETIME<-as.Date(MS1.HUICE$DATE)
+  MS1.HUICE<-as.numeric(MS1.HUICE$ADVANTAGE)
+  MS2.HUICE<-as.numeric(MS2.HUICE$ADVANTAGE)
+  MS1.XINHAO<-0
+  MS2.XINHAO<-0
+  for(i in 1:length(DATETIME))
+    ifelse(MS1.HUICE[i]>=MS1FZ, MS1.XINHAO[i]<-1,MS1.XINHAO[i]<-0)
+  for(i in 1:length(DATETIME))
+    ifelse(MS2.HUICE[i]>=MS2FZ, MS2.XINHAO[i]<-1,MS2.XINHAO[i]<-0)
+  
+
+  OPEN.NEXT<-as.xts(PINZHONG$OPEN,DATETIME)
+  CLOSE.NEXT<-as.xts(PINZHONG$CLOSE,DATETIME)
+  CLOSE<-as.numeric(lag(CLOSE.NEXT,k = 1,na.pad=TRUE))
+  CLOSE[1]<-CLOSE.NEXT[1]
+  CLOSE<-as.xts(CLOSE,DATETIME)
+  HIGH.NEXT<-as.xts(PINZHONG$HIGH,DATETIME)
+  LOW.NEXT<-as.xts(PINZHONG$LOW,DATETIME)
+  LOW.LIMIT<-(LOW.NEXT/OPEN.NEXT-1)*100
+  HIGH.LIMIT<-(HIGH.NEXT/OPEN.NEXT-1)*100
+  OPEN.LIMIT<-(OPEN.NEXT-CLOSE)/CLOSE*100
+
+  DAYVAR<-CLOSE.NEXT-OPEN.NEXT
+  OPEN.NEXT<-as.numeric(OPEN.NEXT)
+  OPEN.LIMIT<-as.numeric(OPEN.LIMIT)
+  LOW.LIMIT<-as.numeric(LOW.LIMIT)
+  HIGH.LIMIT<-as.numeric(HIGH.LIMIT)
+  CLOSE.NEXT<-as.numeric(CLOSE.NEXT)
+  SHOUYI<-0
+  
+  for(i in 1:length(DATETIME))
+  {
+    if(MS1.XINHAO[i]==1
+          & MS2.XINHAO[i]==1
+          & OPEN.LIMIT[i]>GAOKAIFZ)
+       {SHOUYI[i]<-0}
+    else if(MS1.XINHAO[i]==1
+          & MS2.XINHAO[i]==1
+          & LOW.LIMIT[i]< (DUOZHISUN))
+       {SHOUYI[i]<-(DUOZHISUN)/100*OPEN.NEXT[i]}
+    else if(MS1.XINHAO[i]==0
+          & MS2.XINHAO[i]==0
+          & OPEN.LIMIT[i]< (DIKAIFZ))
+      {SHOUYI[i]<-0}
+    else if(MS1.XINHAO[i]==0
+          & MS2.XINHAO[i]==0
+          & HIGH.LIMIT[i]>KONGZHISUN)
+      {SHOUYI[i]<-(KONGZHISUN)/100*OPEN.NEXT[i]}
+    else if(MS1.XINHAO[i]!=MS2.XINHAO[i])
+          {SHOUYI[i]<-0}
+    else SHOUYI[i]<-DAYVAR[i]
+  }  
+  
+  QIHUOZHANGSHU<-1
+  SHIFOUZHISUN<-0
+  for(i in 1:length(DATETIME))
+  {
+    if(MS1.XINHAO[i]==1
+       & MS2.XINHAO[i]==1
+       & LOW.LIMIT[i]<DUOZHISUN)
+       {SHIFOUZHISUN[i]<-1}
+    else if(MS1.XINHAO[i]==0
+       & MS2.XINHAO[i]==0
+       & HIGH.LIMIT[i]>KONGZHISUN)
+       {SHIFOUZHISUN[i]<-1}
+    else SHIFOUZHISUN[i]<-0    
+  }
+  
+  CAPITAL<-QIBUZICHAN
+  for(i in 2:length(DATETIME))
+  {
+    ifelse(trunc(CAPITAL[i-1]/QIBUZICHAN)>=2,QIHUOZHANGSHU[i]<-trunc(CAPITAL[i-1]/QIBUZICHAN),QIHUOZHANGSHU[i]<-1)
+    if(MS1.XINHAO[i]==1
+           & MS2.XINHAO[i]==1
+           & SHOUYI[i]!=0)
+    {
+      CAPITAL[i]<-CAPITAL[i-1]+SHOUYI[i]*YIDIANJINE*QIHUOZHANGSHU[i]-QIHUOZHANGSHU[i]*YIDIANJINE*CLOSE.NEXT[i]*0.00015-YIDIANJINE*QIHUOZHANGSHU[i]*SHIFOUZHISUN[i]*CHONGJICHENGBEN      
+    }
+    else if(MS1.XINHAO[i]==0
+       & MS2.XINHAO[i]==0
+       & SHOUYI[i]!=0)
+    {
+      CAPITAL[i]<-CAPITAL[i-1]-SHOUYI[i]*YIDIANJINE*QIHUOZHANGSHU[i]-QIHUOZHANGSHU[i]*YIDIANJINE*CLOSE.NEXT[i]*0.00015-YIDIANJINE*QIHUOZHANGSHU[i]*SHIFOUZHISUN[i]*CHONGJICHENGBEN 
+    }
+    else CAPITAL[i]<-CAPITAL[i-1]
+  }
+  CAPITAL<-xts(CAPITAL,DATETIME)
+  JZ<-CAPITAL/QIBUZICHAN
+  JINGZHIZENGJIAN<-0
+  JZ<-as.numeric(JZ)
+  for(i in 2:length(JZ))
+  {
+    ifelse(JZ[i]>=JZ[i-1],JINGZHIZENGJIAN[i]<-1,JINGZHIZENGJIAN[i]<-0)
+  }
+  JINGZHIZENGJIANZHANBI<-sum(JINGZHIZENGJIAN)/length(JINGZHIZENGJIAN)
+  ZHISUNZHANBI<-sum(SHIFOUZHISUN)/length(SHIFOUZHISUN)
+  
+  JUBUJINGZHIZUIDA<-1
+  for(i in 1:length(JZ))
+  JUBUJINGZHIZUIDA[i]<-max(JZ[1:i])
+  
+  
+  HUICHE<-0
+  for(i in 1:length(JZ))
+  HUICHE[i]<-(JZ[i]/JUBUJINGZHIZUIDA[i]-1)*100  
+  MAXHUICHE<-min(HUICHE)
+  
+  BUCHUANGXINGAO<-1
+  for(i in 2:length(JZ))
+  ifelse(JZ[i]<JUBUJINGZHIZUIDA[i],BUCHUANGXINGAO[i]<-BUCHUANGXINGAO[i-1]+1,BUCHUANGXINGAO[i]<-0)
+  MAXBUCHUANGXINGAO<-max(BUCHUANGXINGAO)
+  
+  LIANXUKUISUN<-0
+  for(i in 2:length(JZ))
+  ifelse(JZ[i]<JZ[i-1],LIANXUKUISUN[i]<-LIANXUKUISUN[i-1]+1,LIANXUKUISUN[i]<-0)
+  MAXLIANXUKUISUN<-max(LIANXUKUISUN)
+  
+  NIANHUASHOUYI<-(JZ[length(JZ)]^(1/4.5)-1)*100
+  
+  NAV<-JZ[length(JZ)]
+  PROFIT<-NIANHUASHOUYI
+  MAXDD<-MAXHUICHE
+  NAVUPDOWN<-JINGZHIZENGJIANZHANBI*100
+  STOP<-ZHISUNZHANBI*100
+  MAXLOSEDAYS<-MAXLIANXUKUISUN
+  NONEWPEAKDAYS<-MAXBUCHUANGXINGAO
+  
+  PINZHONGJZ<-CLOSE/CLOSE[1]
+  
+  JG<-data.frame(NAV,PROFIT,MAXDD,NAVUPDOWN,STOP,MAXLOSEDAYS,NONEWPEAKDAYS)
+      
+  return(JG)
+    
+}

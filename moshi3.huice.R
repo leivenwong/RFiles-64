@@ -1,0 +1,17 @@
+moshi3.huice<-function(id=SH000001.1D,DATABegt="1997-01-01",CSBegt="2006-01-01",CSEndt="2013-06-24")
+{
+  i<-1
+  MS.ADVANTAGE<-0
+  MS.DATE<-0
+  while(i<=as.Date(CSEndt)-as.Date(CSBegt)+1)
+  {
+    MS.DATE[i]<-as.character(as.Date(CSBegt)+i-1);
+    MS.ADVANTAGE[i]<-moshi3(id,DATABegt,as.character(as.Date(CSBegt)+i-1));
+    i<-i+1   
+  }
+  MS.HUICE<-list()
+  MS.HUICE$DATE<-MS.DATE[which(MS.ADVANTAGE!=0)]
+  MS.HUICE$ADVANTAGE<-MS.ADVANTAGE[which(MS.ADVANTAGE!=0)]
+  MS.HUICE<-as.data.frame(MS.HUICE)
+  return(MS.HUICE)
+}

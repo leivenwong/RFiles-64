@@ -1,0 +1,19 @@
+moshi4.huice<-function(id=SH000001.1D,DATABegt="1997-01-01",CSBegt="2006-01-01",CSEndt="2013-06-24")
+{
+  jishu<-1
+  MS.ADVANTAGE<-0
+  MS.DATE<-0
+  PINZHONG<-qushu(id,CSBegt,CSEndt)
+  DATETIME<-PINZHONG$DATETIME
+  for(i in as.character(DATETIME))
+  {
+    MS.DATE[jishu]<-as.character(i);
+    MS.ADVANTAGE[jishu]<-moshi4(id,DATABegt,as.character(i));
+    jishu<-jishu+1;print(jishu)   
+  }
+  MS.HUICE<-list()
+  MS.HUICE$DATE<-MS.DATE
+  MS.HUICE$ADVANTAGE<-MS.ADVANTAGE
+  MS.HUICE<-as.data.frame(MS.HUICE)
+  return(MS.HUICE)
+}
